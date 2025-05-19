@@ -183,6 +183,7 @@ func (d *defaultImpl) CmdlineForPID(
 	file, err := os.Open(filepath.Clean(cmdline))
 	if err != nil {
 		retErr = fmt.Errorf("%w: %w", ErrProcessNotFound, err)
+
 		return "", retErr
 	}
 
@@ -202,6 +203,7 @@ func (d *defaultImpl) CmdlineForPID(
 
 	if err := scanner.Err(); err != nil {
 		retErr = fmt.Errorf("%w: %w", ErrCmdlineNotFound, err)
+
 		return "", retErr
 	}
 

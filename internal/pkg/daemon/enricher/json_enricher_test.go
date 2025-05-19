@@ -157,6 +157,7 @@ func TestJsonRun(t *testing.T) {
 				require.NoError(t, errUnmarshal)
 				executable = auditMap["executable"]
 				require.Equal(t, executableNginx, executable)
+				//nolint:all
 				require.Equal(t, cmdLineJsonTest, auditMap["cmdLine"])
 			},
 		},
