@@ -75,6 +75,7 @@ const (
 	ContainerPort                              int32 = 9443
 	metricsServerCert                                = "metrics-server-cert"
 	MetricsCertPath                                  = "/var/run/secrets/metrics"
+	DefaultJsonEnricherAuditLogInverval              = 60
 )
 
 var DefaultSPOD = &spodv1alpha1.SecurityProfilesOperatorDaemon{
@@ -92,6 +93,9 @@ var DefaultSPOD = &spodv1alpha1.SecurityProfilesOperatorDaemon{
 		StaticWebhookConfig: false,
 		HostProcVolumePath:  DefaultHostProcPath,
 		PriorityClassName:   DefaultPriorityClassName,
+		JsonEnricherOpts: spodv1alpha1.JsonEnricherOptions{
+			AuditLogIntervalSeconds: DefaultJsonEnricherAuditLogInverval,
+		},
 		SelinuxOpts: spodv1alpha1.SelinuxOptions{
 			AllowedSystemProfiles: []string{
 				"container",
