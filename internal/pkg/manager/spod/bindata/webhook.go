@@ -43,6 +43,7 @@ var (
 	caBundle                      = []byte("Cg==")
 	bindingPath                   = "/mutate-v1-pod-binding"
 	recordingPath                 = "/mutate-v1-pod-recording"
+	execWebhookPath               = "/mutate-v1-pod-exec"
 	sideEffects                   = admissionregv1.SideEffectClassNone
 	admissionReviewVersions       = []string{"v1beta1"}
 	rules                         = []admissionregv1.RuleWithOperations{
@@ -54,6 +55,18 @@ var (
 				APIGroups:   []string{""},
 				APIVersions: []string{"v1"},
 				Resources:   []string{"pods"},
+			},
+		},
+	}
+	rulesExec = []admissionregv1.RuleWithOperations{
+		{
+			Operations: []admissionregv1.OperationType{
+				"CREATE",
+			},
+			Rule: admissionregv1.Rule{
+				APIGroups:   []string{""},
+				APIVersions: []string{"v1"},
+				Resources:   []string{"pods/exec"},
 			},
 		},
 	}
@@ -480,6 +493,21 @@ var webhookConfig = &admissionregv1.MutatingWebhookConfiguration{
 				Service: &admissionregv1.ServiceReference{
 					Name: serviceName,
 					Path: &recordingPath,
+				},
+			},
+			AdmissionReviewVersions: admissionReviewVersions,
+		},
+		{
+			Name:           "exec.spo.io",
+			FailurePolicy:  &failurePolicy,
+			SideEffects:    &sideEffects,
+			Rules:          rulesExec,
+			ObjectSelector: &objectSelector,
+			ClientConfig: admissionregv1.WebhookClientConfig{
+				CABundle: caBundle,
+				Service: &admissionregv1.ServiceReference{
+					Name: serviceName,
+					Path: &execWebhookPath,
 				},
 			},
 			AdmissionReviewVersions: admissionReviewVersions,
