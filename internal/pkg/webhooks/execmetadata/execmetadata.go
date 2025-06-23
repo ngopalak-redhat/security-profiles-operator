@@ -46,8 +46,7 @@ var _ admission.Handler = (*Handler)(nil)
 func (p Handler) Handle(_ context.Context, req admission.Request) admission.Response {
 	fmt.Println("Executing execmetadata webhook")
 
-	podAttach := &corev1.PodAttachOptions{}
-	execObject := corev1.Binding{}
+	execObject := corev1.PodExecOptions{}
 
 	if err := json.Unmarshal(req.Object.Raw, &execObject); err != nil {
 		p.log.Error(err, "unmarshal pod exec request")
