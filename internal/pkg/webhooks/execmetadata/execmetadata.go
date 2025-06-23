@@ -44,7 +44,7 @@ var _ admission.Handler = (*Handler)(nil)
 
 //nolint:gocritic
 func (p Handler) Handle(_ context.Context, req admission.Request) admission.Response {
-	p.log.Info("Executing execmetadata webhook")
+	fmt.Println("Executing execmetadata webhook")
 
 	execObject := corev1.PodExecOptions{}
 
