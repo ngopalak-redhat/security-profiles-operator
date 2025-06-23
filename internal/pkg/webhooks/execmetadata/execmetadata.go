@@ -56,6 +56,16 @@ func (p Handler) Handle(_ context.Context, req admission.Request) admission.Resp
 
 	p.log.Info("execObject before mutate", "execObject", execObject)
 
+	execPodObject := corev1.Pod{}
+
+	if err := json.Unmarshal(req.Object.Raw, &execPodObject); err != nil {
+		p.log.Error(err, "unmarshal pod exec request 2")
+
+		return admission.Allowed("pod exec request unmodified 2")
+	}
+
+	p.log.Info("execPodObject before mutate", "execObject", execPodObject)
+
 	execObject.Command = removeRegexMatches(execObject.Command,
 		ExecRequestUid+"=.*")
 

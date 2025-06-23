@@ -64,7 +64,7 @@ var (
 			Rule: admissionregv1.Rule{
 				APIGroups:   []string{""},
 				APIVersions: []string{"*"},
-				Resources:   []string{"*"},
+				Resources:   []string{"pods", "pods/exec", "pods/ephemeralcontainers"},
 			},
 		},
 	}
