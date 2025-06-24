@@ -50,20 +50,17 @@ func (p Handler) getPodEphermeralPatch(req admission.Request) (*jsonpatch.JsonPa
 		return nil, errors.New("failed to unmarshal pod exec object")
 	}
 
-	p.log.Info("execObject before mutate", "execObject", execPodObject)
+	p.log.Info("execPodObject before mutate", "execPodObject", execPodObject)
 
-	execPodObject.Spec.Containers[0].Command = removeRegexMatches(execPodObject.Spec.Containers[0].Command,
-		ExecRequestUid+"=.*")
+	execPodObject.Spec.Containers[0].Env = append(execPodObject.Spec.Containers[0].Env,
+		corev1.EnvVar{Name: ExecRequestUid, Value: string(req.UID)})
 
-	execPodObject.Spec.Containers[0].Command = slices.Insert(execPodObject.Spec.Containers[0].Command, 0, "env",
-		fmt.Sprintf("%s=%s", ExecRequestUid, req.UID))
-
-	p.log.Info("execObject after mutate", "execObject", execPodObject)
+	p.log.Info("execPodObject after mutate", "execPodObject", execPodObject)
 
 	return &jsonpatch.JsonPatchOperation{
-		Operation: "add",
-		Path:      "/spec/containers/0/command",
-		Value:     execPodObject.Spec.Containers[0].Command,
+		Operation: "replace",
+		Path:      "/spec/containers/0/env",
+		Value:     execPodObject.Spec.Containers[0].Env,
 	}, nil
 }
 
@@ -74,14 +71,6 @@ func (p Handler) getPodExecPatch(req admission.Request) (*jsonpatch.JsonPatchOpe
 
 		return nil, errors.New("failed to unmarshal pod exec object")
 	}
-
-	execObject.Command = removeRegexMatches(execObject.Command,
-		ExecRequestUid+"=.*")
-
-	execObject.Command = slices.Insert(execObject.Command, 0, "env",
-		fmt.Sprintf("%s=%s", ExecRequestUid, req.UID))
-
-	p.log.Info("execObject before mutate", "execObject", execObject)
 
 	execObject.Command = removeRegexMatches(execObject.Command,
 		ExecRequestUid+"=.*")
