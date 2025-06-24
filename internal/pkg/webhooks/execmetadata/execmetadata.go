@@ -59,7 +59,7 @@ func (p Handler) getPodEphermeralPatch(req admission.Request) ([]jsonpatch.JsonP
 		container.Env = append(container.Env, corev1.EnvVar{Name: ExecRequestUid, Value: string(req.UID)})
 		patches = append(patches, jsonpatch.JsonPatchOperation{
 			Operation: "replace",
-			Path:      "/spec/containers/" + strconv.Itoa(i) + "/env",
+			Path:      "/spec/ephemeralContainers/" + strconv.Itoa(i) + "/env",
 			Value:     container.Env,
 		})
 	}
