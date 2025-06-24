@@ -55,13 +55,24 @@ func (p Handler) getPodEphermeralPatch(req admission.Request) ([]jsonpatch.JsonP
 
 	p.log.Info("execPodObject before mutate", "execPodObject", execPodObject)
 
+	type void struct{}
+	containersWithStatus := make(map[string]void)
+
+	for _, eStatus := range execPodObject.Status.EphemeralContainerStatuses {
+		containersWithStatus[eStatus.ContainerID] = void{}
+	}
+
 	for i, container := range execPodObject.Spec.EphemeralContainers {
-		container.Env = append(container.Env, corev1.EnvVar{Name: ExecRequestUid, Value: string(req.UID)})
-		patches = append(patches, jsonpatch.JsonPatchOperation{
-			Operation: "replace",
-			Path:      "/spec/ephemeralContainers/" + strconv.Itoa(i) + "/env",
-			Value:     container.Env,
-		})
+		_, exists := containersWithStatus[execPodObject.Status.EphemeralContainerStatuses[i].ContainerID]
+		if !exists {
+			container.Env = append(container.Env, corev1.EnvVar{Name: ExecRequestUid, Value: string(req.UID)})
+
+			patches = append(patches, jsonpatch.JsonPatchOperation{
+				Operation: "replace",
+				Path:      "/spec/ephemeralContainers/" + strconv.Itoa(i) + "/env",
+				Value:     container.Env,
+			})
+		}
 	}
 
 	p.log.Info("execPodObject after mutate", "execPodObject", execPodObject)
