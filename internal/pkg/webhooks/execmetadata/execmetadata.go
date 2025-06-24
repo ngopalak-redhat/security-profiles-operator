@@ -19,6 +19,7 @@ package execmetadata
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -42,29 +43,45 @@ type Handler struct {
 // Ensure ExecMetadataHandler implements admission.Handler at compile time.
 var _ admission.Handler = (*Handler)(nil)
 
-//nolint:gocritic
-func (p Handler) Handle(_ context.Context, req admission.Request) admission.Response {
-	fmt.Printf("Admission Request (Go struct format): %+v\n", req)
-
-	execObject := corev1.PodExecOptions{}
-
-	if err := json.Unmarshal(req.Object.Raw, &execObject); err != nil {
-		p.log.Error(err, "unmarshal pod exec request")
-
-		return admission.Allowed("pod exec request unmodified")
-	}
-
-	p.log.Info("execObject before mutate", "execObject", execObject)
-
+func (p Handler) getPodEphermeralPatch(req admission.Request) (*jsonpatch.JsonPatchOperation, error) {
 	execPodObject := corev1.Pod{}
 
 	if err := json.Unmarshal(req.Object.Raw, &execPodObject); err != nil {
-		p.log.Error(err, "unmarshal pod exec request 2")
-
-		return admission.Allowed("pod exec request unmodified 2")
+		return nil, errors.New("failed to unmarshal pod exec object")
 	}
 
-	p.log.Info("execPodObject before mutate", "execObject", execPodObject)
+	p.log.Info("execObject before mutate", "execObject", execPodObject)
+
+	execPodObject.Spec.Containers[0].Command = removeRegexMatches(execPodObject.Spec.Containers[0].Command,
+		ExecRequestUid+"=.*")
+
+	execPodObject.Spec.Containers[0].Command = slices.Insert(execPodObject.Spec.Containers[0].Command, 0, "env",
+		fmt.Sprintf("%s=%s", ExecRequestUid, req.UID))
+
+	p.log.Info("execObject after mutate", "execObject", execPodObject)
+
+	return &jsonpatch.JsonPatchOperation{
+		Operation: "add",
+		Path:      "/spec/containers/0/command",
+		Value:     execPodObject.Spec.Containers[0].Command,
+	}, nil
+}
+
+func (p Handler) getPodExecPatch(req admission.Request) (*jsonpatch.JsonPatchOperation, error) {
+	execObject := corev1.PodExecOptions{}
+
+	if err := json.Unmarshal(req.Object.Raw, &execObject); err != nil {
+
+		return nil, errors.New("failed to unmarshal pod exec object")
+	}
+
+	execObject.Command = removeRegexMatches(execObject.Command,
+		ExecRequestUid+"=.*")
+
+	execObject.Command = slices.Insert(execObject.Command, 0, "env",
+		fmt.Sprintf("%s=%s", ExecRequestUid, req.UID))
+
+	p.log.Info("execObject before mutate", "execObject", execObject)
 
 	execObject.Command = removeRegexMatches(execObject.Command,
 		ExecRequestUid+"=.*")
@@ -74,12 +91,40 @@ func (p Handler) Handle(_ context.Context, req admission.Request) admission.Resp
 
 	p.log.Info("execObject after mutate", "execObject", execObject)
 
+	return &jsonpatch.JsonPatchOperation{
+		Operation: "add",
+		Path:      "/command",
+		Value:     execObject.Command,
+	}, nil
+}
+
+//nolint:gocritic
+func (p Handler) Handle(_ context.Context, req admission.Request) admission.Response {
+
+	var jsonPathOp jsonpatch.JsonPatchOperation
+	if req.Kind.Kind == "PodExecOptions" {
+		fmt.Println("PodExecOptions")
+		podExecJsonPathOp, err := p.getPodExecPatch(req)
+		if err != nil {
+			return admission.Allowed("pod exec request unmodified")
+		} else {
+			jsonPathOp = *podExecJsonPathOp
+		}
+	} else if req.Kind.Kind == "Pod" {
+		fmt.Println("Pod")
+		podEphJsonPathOp, err := p.getPodEphermeralPatch(req)
+		if err != nil {
+			return admission.Allowed("pod exec request unmodified")
+		} else {
+			jsonPathOp = *podEphJsonPathOp
+		}
+	} else {
+		fmt.Println("Unrecognized kind")
+		return admission.Allowed("pod exec request unmodified")
+	}
+
 	jsonPathOps := []jsonpatch.JsonPatchOperation{
-		{
-			Operation: "add",
-			Path:      "/command",
-			Value:     execObject.Command,
-		},
+		jsonPathOp,
 	}
 
 	resp := admission.Patched("UID added to execmetadata", jsonPathOps...)
@@ -88,6 +133,8 @@ func (p Handler) Handle(_ context.Context, req admission.Request) admission.Resp
 	resp.AuditAnnotations = map[string]string{
 		ExecRequestUid: string(req.UID),
 	}
+
+	fmt.Println("Modified and sent" + resp.String())
 
 	p.log.Info("response sent", "resp", resp)
 
