@@ -59,11 +59,11 @@ func (p Handler) getPodEphermeralPatch(req admission.Request) ([]jsonpatch.JsonP
 	containersWithStatus := make(map[string]void)
 
 	for _, eStatus := range execPodObject.Status.EphemeralContainerStatuses {
-		containersWithStatus[eStatus.ContainerID] = void{}
+		containersWithStatus[eStatus.Name] = void{}
 	}
 
 	for i, container := range execPodObject.Spec.EphemeralContainers {
-		_, exists := containersWithStatus[execPodObject.Status.EphemeralContainerStatuses[i].ContainerID]
+		_, exists := containersWithStatus[container.Name]
 		if !exists {
 			container.Env = append(container.Env, corev1.EnvVar{Name: ExecRequestUid, Value: string(req.UID)})
 
