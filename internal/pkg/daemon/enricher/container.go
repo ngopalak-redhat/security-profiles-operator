@@ -130,6 +130,7 @@ func populateCacheEntryForContainer(
 	eg.Go(func() (errorToRetry error) {
 		//nolint:gocritic // This is what we expect and want
 		statuses := append(pod.Status.InitContainerStatuses, pod.Status.ContainerStatuses...)
+		statuses = append(statuses, pod.Status.EphemeralContainerStatuses...)
 
 		logger.V(1).Info("populateCacheEntryForContainer - start",
 			"statuses", statuses, "pod", pod.Name)
