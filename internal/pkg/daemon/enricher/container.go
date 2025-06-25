@@ -57,11 +57,16 @@ func getContainerInfo(
 	infoCache *ttlcache.Cache[string, *types.ContainerInfo],
 	logger logr.Logger,
 ) (*types.ContainerInfo, error) {
+
+	logger.V(1).Info("getContainerInfo - cache", "targetContainerID", targetContainerID)
+
 	// Check the cache first
 	item := infoCache.Get(targetContainerID)
 	if item != nil {
 		return item.Value(), nil
 	}
+
+	logger.V(1).Info("getContainerInfo - cache miss", "targetContainerID", targetContainerID)
 
 	if err := populateContainerPodCache(ctx, nodeName, clientSet, impl, infoCache, logger); err != nil {
 		return nil, fmt.Errorf("get container info for pods: %w", err)
@@ -93,10 +98,15 @@ func populateContainerPodCache(
 	return util.RetryEx(
 		&containerRetryBackoff,
 		func() (retryErr error) {
+			logger.V(1).Info("populateContainerPodCache - start", "nodeName", nodeName)
+
 			pods, err := impl.ListPods(ctxwithTimeout, clientset, nodeName)
 			if err != nil {
 				return fmt.Errorf("list node %s's pods: %w", nodeName, err)
 			}
+
+			logger.V(1).Info("populateContainerPodCache - end",
+				"nodeName", nodeName, "pods", pods)
 
 			eg, ctx := errgroup.WithContext(ctxwithTimeout)
 
@@ -121,6 +131,8 @@ func populateCacheEntryForContainer(
 		//nolint:gocritic // This is what we expect and want
 		statuses := append(pod.Status.InitContainerStatuses, pod.Status.ContainerStatuses...)
 
+		logger.V(1).Info("populateCacheEntryForContainer - start",
+			"statuses", statuses, "pod", pod.Name)
 		for c := range statuses {
 			containerStatus := statuses[c]
 			containerID := containerStatus.ContainerID
@@ -135,6 +147,9 @@ func populateCacheEntryForContainer(
 
 					continue
 				}
+
+				logger.V(1).Info("populateCacheEntryForContainer - end",
+					"containerID", containerID, "idemptyErr", idemptyErr)
 
 				return idemptyErr
 			}
