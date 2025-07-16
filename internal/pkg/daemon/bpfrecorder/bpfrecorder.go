@@ -468,7 +468,6 @@ var baseHooks = []string{
 	"sys_enter_prctl",
 	"sched_process_exec",
 	"sched_process_exit",
-	"sys_exit_clone",
 }
 
 // Load loads the BPF code, does relocations, and gets references to the programs we want to attach.
