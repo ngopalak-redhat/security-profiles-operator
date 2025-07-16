@@ -594,8 +594,8 @@ semodule -i /opt/spo-profiles/selinuxrecording.cil
 							},
 							Capabilities: &corev1.Capabilities{
 								Add: []corev1.Capability{
-									"CAP_BPF",
-									"CAP_PERFMON",
+									"BPF",
+									"PERFMON",
 								},
 							},
 						},
