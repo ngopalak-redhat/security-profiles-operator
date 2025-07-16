@@ -598,6 +598,7 @@ semodule -i /opt/spo-profiles/selinuxrecording.cil
 									"BPF",
 									"PERFMON",
 									"CHOWN",
+									"NET_BIND_SERVICE",
 								},
 							},
 						},
