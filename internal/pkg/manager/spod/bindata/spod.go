@@ -592,6 +592,12 @@ semodule -i /opt/spo-profiles/selinuxrecording.cil
 								Type:             corev1.SeccompProfileTypeLocalhost,
 								LocalhostProfile: &localSeccompBpfRecorderProfilePath,
 							},
+							Capabilities: &corev1.Capabilities{
+								Add: []corev1.Capability{
+									"CAP_BPF",
+									"CAP_PERFMON",
+								},
+							},
 						},
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
