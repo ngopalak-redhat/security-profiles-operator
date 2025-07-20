@@ -638,7 +638,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         // Get filename (first argument)
         char * filename_ptr = (char *)ctx->args[0];
         if (filename_ptr) {
-            bpf_read_user_string_safe(event->filename, sizeof(event->filename), filename_ptr);
+            bpf_probe_read_user_str(&event->filename, sizeof(event->filename), filename_ptr);
         }
 
         char *args_start = (char *)event->args_and_env;
@@ -659,6 +659,10 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
                 // Calculate remaining space in the args portion of the buffer
                 u32 remaining_space = MAX_ARGC_ENV_BUFFER - current_offset;
                 if (remaining_space <= 0 || current_offset >= MAX_ARGC_ENV_BUFFER) { // No space left for this arg
+                    break;
+                }
+
+                if (args_start + current_offset < 0) {
                     break;
                 }
                 // Read the argument string into our buffer
