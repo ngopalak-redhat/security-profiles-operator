@@ -401,6 +401,9 @@ static __always_inline u32 read_user_string_to_buffer(char *buffer, u32 buffer_m
 
     u32 len = 0;
     // Read up to remaining buffer space or MAX_STR_LEN
+    bpf_printk("ngopalak 1 %s", buffer);
+    bpf_printk("ngopalak 2 %s", user_ptr);
+    bpf_printk("ngopalak 3 %d %d", buffer_max_len, current_offset);
     len = bpf_probe_read_user_str(buffer + current_offset,
                                   buffer_max_len - current_offset,
                                   user_ptr);
