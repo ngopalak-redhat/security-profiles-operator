@@ -629,7 +629,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         }
 
         // Read argv
-        char * argv_ptr = (char *)(ctx->args[1]); // argv is usually args[1]
+        char ** argv_ptr = (char **)(ctx->args[1]); // argv is usually args[1]
         u32 current_offset = 0;
         if (argv_ptr) {
             #pragma unroll
@@ -642,6 +642,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
                 }
 
                 // Read the argument string into our buffer
+
                 u32 written_len = read_user_string_to_buffer(event->args_and_env,
                                                                 MAX_ARGC_ENV_BUFFER,
                                                                 arg_str_ptr,
