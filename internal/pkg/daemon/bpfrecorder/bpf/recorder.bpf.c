@@ -22,6 +22,7 @@
 #define EVENT_TYPE_APPARMOR_SOCKET 3
 #define EVENT_TYPE_APPARMOR_CAP 4
 #define EVENT_TYPE_CLEAR_MNTNS 5
+#define EVENT_TYPE_EXECEV_ENTER 6
 
 #define FLAG_READ 0x1
 #define FLAG_WRITE 0x2
@@ -115,12 +116,22 @@ struct {
     __uint(max_entries, 1 << 24);
 } events SEC(".maps");
 
+// Max number of arguments/env vars to capture
+#define MAX_ARGS 20
+// Max length for each argument/env var string
+#define MAX_STR_LEN 128
+// Max total size for captured args/env, including null terminators
+#define MAX_ARGC_ENV_BUFFER (MAX_ARGS * MAX_STR_LEN)
+
 typedef struct __attribute__((__packed__)) event_data {
     u32 pid;
     u32 mntns;
     u8 type;
     u64 flags;
     char data[PATH_MAX];
+    char args_and_env[MAX_ARGC_ENV_BUFFER * 2];
+    u32 args_len;
+    u32 env_len;
 } event_data_t;
 
 const volatile char filter_name[MAX_COMM_LEN] = {};
@@ -378,6 +389,27 @@ static __always_inline int register_file_event(struct file * file, u64 flags)
                              false);
 }
 
+/**
+ * read_user_string_to_buffer Helper to read and append user string to a buffer.
+ * Returns actual bytes written (including null terminator) or 0 on error
+ */
+static __always_inline u32 read_user_string_to_buffer(char *buffer, u32 buffer_max_len,
+                                                       char *user_ptr, u32 current_offset) {
+    if (!user_ptr || current_offset >= buffer_max_len) {
+        return 0;
+    }
+
+    u32 len = 0;
+    // Read up to remaining buffer space or MAX_STR_LEN
+    len = bpf_probe_read_user_str(buffer + current_offset,
+                                  buffer_max_len - current_offset,
+                                  user_ptr);
+    if (len > 0) {
+        return len;
+    }
+    return 0;
+}
+
 SEC("lsm/file_open")
 int BPF_PROG(file_open, struct file * file)
 {
@@ -578,6 +610,78 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
     if (!mntns)
         return 0;
     trace_hook("sys_enter_execve");
+
+    event_data_t * event =
+            bpf_ringbuf_reserve(&events, sizeof(event_data_t), 0);
+    if (event) {
+    	event->pid = bpf_get_current_pid_tgid() >> 32;
+    	event->type = EVENT_TYPE_EXECEV_ENTER;
+        // Get filename (first argument)
+        char * filename_ptr = (char *)ctx->args[0];
+        if (filename_ptr) {
+            bpf_probe_read_user_str(&event->data, sizeof(event->data), filename_ptr);
+        }
+
+        // Read argv
+        char * argv_ptr = (char *)(ctx->args[1]); // argv is usually args[1]
+        u32 current_offset = 0;
+        if (argv_ptr) {
+            #pragma unroll
+            for (int i = 0; i < MAX_ARGS; i++) {
+                char *arg_str_ptr;
+                // Read pointer to the argument string
+                bpf_probe_read_user(&arg_str_ptr, sizeof(arg_str_ptr), &argv_ptr[i]);
+                if (!arg_str_ptr) {
+                    break; // End of arguments
+                }
+
+                // Read the argument string into our buffer
+                u32 written_len = read_user_string_to_buffer(event->args_and_env,
+                                                                MAX_ARGC_ENV_BUFFER,
+                                                                arg_str_ptr,
+                                                                current_offset);
+                if (written_len == 0) { // Failed to read or buffer full
+                    break;
+                }
+                current_offset += written_len;
+                if (current_offset >= MAX_ARGC_ENV_BUFFER) {
+                    break; // Buffer is full
+                }
+            }
+        }
+        event->args_len = current_offset; // Store actual length of args data
+
+        // Read envp
+        char *envp_ptr = (char *)(ctx->args[2]); // envp is usually args[2]
+        current_offset = 0; // Reset offset for env data
+        if (envp_ptr) {
+            #pragma unroll
+            for (int i = 0; i < MAX_ARGS; i++) { // Reusing MAX_ARGS for env vars
+                char * env_str_ptr;
+                // Read pointer to the environment string
+                bpf_probe_read_user(&env_str_ptr, sizeof(env_str_ptr), &envp_ptr[i]);
+                if (!env_str_ptr) {
+                    break; // End of environment variables
+                }
+
+                // Read the env string into our buffer, offset into the env portion
+                u32 written_len = read_user_string_to_buffer(event->args_and_env + MAX_ARGC_ENV_BUFFER,
+                                                                MAX_ARGC_ENV_BUFFER, // Max len for env part
+                                                                env_str_ptr,
+                                                                current_offset);
+                if (written_len == 0) {
+                    break;
+                }
+                current_offset += written_len;
+                if (current_offset >= MAX_ARGC_ENV_BUFFER) {
+                    break; // Buffer is full
+                }
+            }
+        }
+        event->env_len = current_offset; // Store actual length of env data
+
+        bpf_ringbuf_submit(event, 0);
+    }
 
     // Handle runc init.
     //

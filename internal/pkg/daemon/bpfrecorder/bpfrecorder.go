@@ -64,12 +64,16 @@ const (
 	recordingSeccomp        int           = 1
 	recordingAppArmor       int           = 2
 	pathMax                 int           = 4096
+	maxArgs                 int           = 20
+	maxStrLen               int           = 128
+	maxArgcEnvBuffer        int           = maxArgs * maxStrLen
 	eventTypeNewPid         int           = 0
 	eventTypeExit           int           = 1
 	eventTypeAppArmorFile   int           = 2
 	eventTypeAppArmorSocket int           = 3
 	eventTypeAppArmorCap    int           = 4
 	eventTypeClearMntns     int           = 5
+	eventTypeExecevEnter    int           = 6
 	excludeMntnsEnabled     byte          = 1
 )
 
@@ -101,11 +105,14 @@ type BpfRecorder struct {
 // We use a single shared event ringbuf for all userspace communication.
 // This ensures that all previous events have already been processed.
 type bpfEvent struct {
-	Pid   uint32
-	Mntns uint32
-	Type  uint8
-	Flags uint64
-	Data  [pathMax]uint8
+	Pid        uint32
+	Mntns      uint32
+	Type       uint8
+	Flags      uint64
+	Data       [pathMax]uint8
+	ArgvAndEnv [maxArgcEnvBuffer * 2]uint8
+	ArgsLen    uint32
+	EnvLen     uint32
 }
 
 // New returns a new BpfRecorder instance.
@@ -463,7 +470,6 @@ func (b *BpfRecorder) getMntnsForProfile(profile string) (uint32, bool) {
 
 var baseHooks = []string{
 	"sys_enter",
-	"sys_exit_clone",
 	"sys_enter_execve",
 	"sys_enter_getgid",
 	"sys_enter_prctl",
@@ -819,6 +825,8 @@ func (b *BpfRecorder) handleEvent(eventBytes []byte) {
 		if b.AppArmor != nil {
 			b.AppArmor.clearMntns(&event)
 		}
+	case uint8(eventTypeExecevEnter):
+		b.logger.Info("eventTypeExecevEnter received", "event", &event)
 	}
 }
 
