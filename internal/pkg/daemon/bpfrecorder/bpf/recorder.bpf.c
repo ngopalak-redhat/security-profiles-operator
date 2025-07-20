@@ -633,7 +633,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         u32 current_offset = 0;
         if (argv_ptr) {
             #pragma unroll
-            for (int i = 0; i < 1; i++) {
+            for (int i = 0; i < MAX_ARGS; i++) {
                 char *arg_str_ptr;
                 // Read pointer to the argument string
                 bpf_probe_read_user(&arg_str_ptr, sizeof(arg_str_ptr), &argv_ptr[i]);
