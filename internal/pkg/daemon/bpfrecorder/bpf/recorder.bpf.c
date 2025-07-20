@@ -130,7 +130,8 @@ typedef struct __attribute__((__packed__)) event_data {
     u64 flags;
     char data[PATH_MAX];
     char filename[MAX_STR_LEN];
-    char args_and_env[MAX_ARGC_ENV_BUFFER * 2];
+    char args[MAX_ARGS][MAX_STR_LEN];
+    char env[MAX_ARGS][MAX_STR_LEN];
     u32 args_len;
     u32 env_len;
 } event_data_t;
@@ -641,11 +642,9 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
             bpf_probe_read_user_str(&event->filename, sizeof(event->filename), filename_ptr);
         }
 
-        char *args_start = (char *)event->args_and_env;
-
         // Read argv
         char *const *argv_ptr = (char *const *)(ctx->args[1]); // argv is usually args[1]
-        u32 current_offset = 0;
+        u32 count = 0;
         if (argv_ptr) {
             #pragma unroll
             for (int i = 0; i < MAX_ARGS; i++) {
@@ -656,34 +655,18 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
                     break; // End of arguments
                 }
 
-                // Calculate remaining space in the args portion of the buffer
-                u32 remaining_space = MAX_ARGC_ENV_BUFFER - current_offset;
-                if (remaining_space <= 0 || current_offset >= MAX_ARGC_ENV_BUFFER) { // No space left for this arg
-                    break;
-                }
-
-                if (args_start + current_offset < 0) {
-                    break;
-                }
                 // Read the argument string into our buffer
-
-                u32 written_len = bpf_read_user_string_safe(args_start + current_offset,
-                                                                remaining_space,
+                bpf_read_user_string_safe(event->args[i],
+                                                                sizeof(event->args[i]),
                                                                 arg_str_ptr);
-                if (written_len == 0) { // Failed to read or buffer full
-                    break;
-                }
-                current_offset += written_len;
-                if (current_offset >= MAX_ARGC_ENV_BUFFER) {
-                    break; // Buffer is full
-                }
+                count++;
             }
         }
-        event->args_len = current_offset; // Store actual length of args data
+        event->args_len = count; // Store actual length of args data
 
         // Read envp
         char *envp_ptr = (char *)(ctx->args[2]); // envp is usually args[2]
-        current_offset = 0; // Reset offset for env data
+        count = 0; // Reset offset for env data
         /*if (envp_ptr) {
             #pragma unroll
             for (int i = 0; i < MAX_ARGS; i++) { // Reusing MAX_ARGS for env vars

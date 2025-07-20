@@ -105,15 +105,16 @@ type BpfRecorder struct {
 // We use a single shared event ringbuf for all userspace communication.
 // This ensures that all previous events have already been processed.
 type bpfEvent struct {
-	Pid        uint32
-	Mntns      uint32
-	Type       uint8
-	Flags      uint64
-	Data       [pathMax]uint8
+	Pid      uint32
+	Mntns    uint32
+	Type     uint8
+	Flags    uint64
+	Data     [pathMax]uint8
 	Filename [maxStrLen]uint8
-	ArgvAndEnv [maxArgcEnvBuffer * 2]uint8
-	ArgsLen    uint32
-	EnvLen     uint32
+	Args     [maxArgcEnvBuffer][maxStrLen]uint8
+	Env      [maxArgcEnvBuffer][maxStrLen]uint8
+	ArgsLen  uint32
+	EnvLen   uint32
 }
 
 // New returns a new BpfRecorder instance.
