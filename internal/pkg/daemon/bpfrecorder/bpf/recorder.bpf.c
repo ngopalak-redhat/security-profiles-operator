@@ -408,6 +408,9 @@ static __always_inline u32 read_user_string_to_buffer(char *buffer, u32 buffer_m
     len = bpf_probe_read_user_str(buffer + current_offset,
                                   MAX_STR_LEN,
                                   user_ptr);
+    if (len < 0 || len > MAX_STR_LEN) {
+        return 0;
+    }
     if (len > 0) {
         return len;
     }
