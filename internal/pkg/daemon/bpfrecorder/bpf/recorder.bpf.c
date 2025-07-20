@@ -417,7 +417,7 @@ static __always_inline int register_file_event(struct file * file, u64 flags)
     return 0;
 }*/
 
-static __always_inline u32 bpf_read_user_string_safe(char *dest, u32 max_len, char *user_ptr) {
+static __always_inline u32 bpf_read_user_string_safe(char *dest, u32 max_len, const char *user_ptr) {
     if (!user_ptr || !dest) {
         return 0;
     }
@@ -641,13 +641,15 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
             bpf_read_user_string_safe(event->filename, sizeof(event->filename), filename_ptr);
         }
 
+        char *args_start = (char *)event->args_and_env;
+
         // Read argv
-        char **argv_ptr = (char **)(ctx->args[1]); // argv is usually args[1]
+        char *const *argv_ptr = (char *const *)(ctx->args[1]); // argv is usually args[1]
         u32 current_offset = 0;
         if (argv_ptr) {
             #pragma unroll
             for (int i = 0; i < MAX_ARGS; i++) {
-                char *arg_str_ptr;
+                const char *arg_str_ptr;
                 // Read pointer to the argument string
                 bpf_probe_read_user(&arg_str_ptr, sizeof(arg_str_ptr), &argv_ptr[i]);
                 if (!arg_str_ptr) {
@@ -656,12 +658,12 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
 
                 // Calculate remaining space in the args portion of the buffer
                 u32 remaining_space = MAX_ARGC_ENV_BUFFER - current_offset;
-                if (remaining_space <= 0) { // No space left for this arg
+                if (remaining_space <= 0 || current_offset >= MAX_ARGC_ENV_BUFFER) { // No space left for this arg
                     break;
                 }
                 // Read the argument string into our buffer
 
-                u32 written_len = bpf_read_user_string_safe(&event->args_and_env[current_offset],
+                u32 written_len = bpf_read_user_string_safe(args_start + current_offset,
                                                                 remaining_space,
                                                                 arg_str_ptr);
                 if (written_len == 0) { // Failed to read or buffer full
