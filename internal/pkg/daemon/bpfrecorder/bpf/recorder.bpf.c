@@ -405,7 +405,7 @@ static __always_inline u32 read_user_string_to_buffer(char *buffer, u32 buffer_m
     bpf_printk("ngopalak 1 %s", buffer);
     bpf_printk("ngopalak 2 %s", user_ptr);
     bpf_printk("ngopalak 3 %d %d", buffer_max_len, current_offset);
-    len = bpf_probe_read_user_str(buffer + current_offset,
+    len = bpf_probe_read_user_str(buffer,
                                   MAX_STR_LEN,
                                   user_ptr);
     if (len < 0 || len > MAX_STR_LEN) {
@@ -646,7 +646,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
 
                 // Read the argument string into our buffer
 
-                u32 written_len = read_user_string_to_buffer(event->args_and_env,
+                u32 written_len = read_user_string_to_buffer(&event->args_and_env[current_offset],
                                                                 MAX_ARGC_ENV_BUFFER,
                                                                 arg_str_ptr,
                                                                 current_offset);
