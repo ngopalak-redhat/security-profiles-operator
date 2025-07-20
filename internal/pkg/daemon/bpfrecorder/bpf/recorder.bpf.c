@@ -61,8 +61,8 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 #endif
 
 // toggle this for additional debug output
-#define trace_hook(...)
-// #define trace_hook(...) if(get_mntns()) { bpf_printk(__VA_ARGS__) }
+// #define trace_hook(...)
+#define trace_hook(...) if(get_mntns()) { bpf_printk(__VA_ARGS__); }
 
 // are we currently recording?
 // If yes, the only map element is set to true.
@@ -129,6 +129,7 @@ typedef struct __attribute__((__packed__)) event_data {
     u8 type;
     u64 flags;
     char data[PATH_MAX];
+    char filename[MAX_STR_LEN];
     char args_and_env[MAX_ARGC_ENV_BUFFER * 2];
     u32 args_len;
     u32 env_len;
@@ -622,7 +623,9 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         // Get filename (first argument)
         char * filename_ptr = (char *)ctx->args[0];
         if (filename_ptr) {
-            bpf_probe_read_user_str(&event->data, sizeof(event->data), filename_ptr);
+            bpf_printk("ngopalak Read filename %s", filename_ptr);
+            bpf_printk("ngopalak Read file size %lu %lu", sizeof(event->filename), sizeof(filename_ptr));
+            bpf_probe_read_user_str(&event->filename, sizeof(event->filename), filename_ptr);
         }
 
         // Read argv

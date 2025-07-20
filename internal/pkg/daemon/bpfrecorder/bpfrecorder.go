@@ -110,6 +110,7 @@ type bpfEvent struct {
 	Type       uint8
 	Flags      uint64
 	Data       [pathMax]uint8
+	Filename [maxStrLen]uint8
 	ArgvAndEnv [maxArgcEnvBuffer * 2]uint8
 	ArgsLen    uint32
 	EnvLen     uint32
