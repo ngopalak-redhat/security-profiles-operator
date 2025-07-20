@@ -631,9 +631,9 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         // Read argv
         char * argv_ptr = (char *)(ctx->args[1]); // argv is usually args[1]
         u32 current_offset = 0;
-        /*if (argv_ptr) {
+        if (argv_ptr) {
             #pragma unroll
-            for (int i = 0; i < MAX_ARGS; i++) {
+            for (int i = 0; i < 1; i++) {
                 char *arg_str_ptr;
                 // Read pointer to the argument string
                 bpf_probe_read_user(&arg_str_ptr, sizeof(arg_str_ptr), &argv_ptr[i]);
@@ -656,7 +656,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
             }
         }
         event->args_len = current_offset; // Store actual length of args data
-        */
+
         // Read envp
         char *envp_ptr = (char *)(ctx->args[2]); // envp is usually args[2]
         current_offset = 0; // Reset offset for env data
