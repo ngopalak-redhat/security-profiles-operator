@@ -396,7 +396,7 @@ static __always_inline int register_file_event(struct file * file, u64 flags)
  */
 static __always_inline u32 read_user_string_to_buffer(char *buffer, u32 buffer_max_len,
                                                        char *user_ptr, u32 current_offset) {
-    if (!user_ptr || current_offset >= buffer_max_len) {
+    if (!user_ptr || (current_offset + MAX_STR_LEN) >= buffer_max_len) {
         return 0;
     }
 
@@ -406,7 +406,7 @@ static __always_inline u32 read_user_string_to_buffer(char *buffer, u32 buffer_m
     bpf_printk("ngopalak 2 %s", user_ptr);
     bpf_printk("ngopalak 3 %d %d", buffer_max_len, current_offset);
     len = bpf_probe_read_user_str(buffer + current_offset,
-                                  buffer_max_len - current_offset,
+                                  MAX_STR_LEN,
                                   user_ptr);
     if (len > 0) {
         return len;
@@ -629,7 +629,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         }
 
         // Read argv
-        char ** argv_ptr = (char **)(ctx->args[1]); // argv is usually args[1]
+        char **argv_ptr = (char **)(ctx->args[1]); // argv is usually args[1]
         u32 current_offset = 0;
         if (argv_ptr) {
             #pragma unroll
