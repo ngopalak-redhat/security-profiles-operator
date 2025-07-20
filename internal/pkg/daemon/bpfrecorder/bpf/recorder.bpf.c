@@ -394,7 +394,7 @@ static __always_inline int register_file_event(struct file * file, u64 flags)
  * read_user_string_to_buffer Helper to read and append user string to a buffer.
  * Returns actual bytes written (including null terminator) or 0 on error
  */
-static __always_inline u32 read_user_string_to_buffer(char *buffer, u32 buffer_max_len,
+/*static __always_inline u32 read_user_string_to_buffer(char *buffer, u32 buffer_max_len,
                                                        char *user_ptr, u32 current_offset) {
     if (!user_ptr || (current_offset + MAX_STR_LEN) >= buffer_max_len) {
         return 0;
@@ -415,6 +415,18 @@ static __always_inline u32 read_user_string_to_buffer(char *buffer, u32 buffer_m
         return len;
     }
     return 0;
+}*/
+
+static __always_inline u32 bpf_read_user_string_safe(char *dest, u32 max_len, char *user_ptr) {
+    if (!user_ptr || !dest) {
+        return 0;
+    }
+    // bpf_probe_read_user_str already handles max_len as a bounds check
+    u32 len = bpf_probe_read_user_str(dest, max_len, user_ptr);
+    if (len > 0) {
+        return len; // Returns length including null terminator
+    }
+    return 0; // Error or empty string
 }
 
 SEC("lsm/file_open")
@@ -626,9 +638,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         // Get filename (first argument)
         char * filename_ptr = (char *)ctx->args[0];
         if (filename_ptr) {
-            bpf_printk("ngopalak Read filename %s", filename_ptr);
-            bpf_printk("ngopalak Read file size %lu %lu", sizeof(event->filename), sizeof(filename_ptr));
-            bpf_probe_read_user_str(&event->filename, sizeof(event->filename), filename_ptr);
+            bpf_read_user_string_safe(event->filename, sizeof(event->filename), filename_ptr);
         }
 
         // Read argv
@@ -644,12 +654,16 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
                     break; // End of arguments
                 }
 
+                // Calculate remaining space in the args portion of the buffer
+                u32 remaining_space = MAX_ARGC_ENV_BUFFER - current_offset;
+                if (remaining_space <= 0) { // No space left for this arg
+                    break;
+                }
                 // Read the argument string into our buffer
 
-                u32 written_len = read_user_string_to_buffer(&event->args_and_env[current_offset],
-                                                                MAX_ARGC_ENV_BUFFER,
-                                                                arg_str_ptr,
-                                                                current_offset);
+                u32 written_len = bpf_read_user_string_safe(&event->args_and_env[current_offset],
+                                                                remaining_space,
+                                                                arg_str_ptr);
                 if (written_len == 0) { // Failed to read or buffer full
                     break;
                 }
