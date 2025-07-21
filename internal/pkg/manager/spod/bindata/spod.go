@@ -652,17 +652,13 @@ semodule -i /opt/spo-profiles/selinuxrecording.cil
 							Privileged:             &truly,
 							RunAsUser:              &userRoot,
 							RunAsGroup:             &userRoot,
-							Capabilities: &corev1.Capabilities{
-								Add: []corev1.Capability{
-									"SYS_PTRACE", // Needed for /proc/PID/environ access on some systems (ex: Ubuntu)
-									"SYS_RESOURCE",
-									"BPF",
-									"PERFMON",
-								},
-							},
 							SELinuxOptions: &corev1.SELinuxOptions{
 								// TODO(pjbgf): Use a more restricted selinux type
 								Type: "spc_t",
+							},
+							SeccompProfile: &corev1.SeccompProfile{
+								Type:             corev1.SeccompProfileTypeLocalhost,
+								LocalhostProfile: &localSeccompBpfRecorderProfilePath,
 							},
 						},
 						Resources: corev1.ResourceRequirements{
