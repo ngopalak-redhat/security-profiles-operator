@@ -646,12 +646,12 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         exec_event->args_len = count; // Store actual length of args data
 
         // Read envp
-        char *envp_ptr = (char *)(ctx->args[2]); // envp is usually args[2]
+        char *const *envp_ptr = (char *const *)(ctx->args[2]); // envp is usually args[2]
         count = 0; // Reset offset for env data
         if (envp_ptr) {
             #pragma unroll
             for (int i = 0; i < MAX_ARGS; i++) { // Reusing MAX_ARGS for env vars
-                char * env_str_ptr;
+                const char * env_str_ptr;
                 // Read pointer to the environment string
                 bpf_probe_read_user(&env_str_ptr, sizeof(env_str_ptr), &envp_ptr[i]);
                 if (!env_str_ptr) {
