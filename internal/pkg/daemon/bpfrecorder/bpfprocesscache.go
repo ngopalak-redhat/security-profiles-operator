@@ -46,6 +46,7 @@ func NewBpfProcessCache(logger logr.Logger) (*BpfProcessCache, error) {
 		logger:   logger,
 	}
 	if err := Load(logger, bpfProcCache); err != nil {
+		logger.Error(err, "failed to load process cache")
 		return nil, ErrBpfLoad
 	}
 	return bpfProcCache, nil
