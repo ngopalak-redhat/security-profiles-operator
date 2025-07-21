@@ -806,6 +806,8 @@ func (b *BpfRecorder) handleEvent(eventBytes []byte) {
 	var event bpfEvent
 
 	copiedEventBytes := make([]byte, len(eventBytes))
+	copy(copiedEventBytes, eventBytes)
+
 	err := binary.Read(bytes.NewReader(eventBytes), binary.LittleEndian, &event)
 	if err != nil {
 		b.logger.Error(err, "Couldn't read event structure")
