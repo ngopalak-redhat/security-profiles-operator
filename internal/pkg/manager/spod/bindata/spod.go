@@ -645,6 +645,9 @@ semodule -i /opt/spo-profiles/selinuxrecording.cil
 							Capabilities: &corev1.Capabilities{
 								Add: []corev1.Capability{
 									"SYS_PTRACE", // Needed for /proc/PID/environ access on some systems (ex: Ubuntu)
+									"SYS_RESOURCE",
+									"BPF",
+									"PERFMON",
 								},
 							},
 							SELinuxOptions: &corev1.SELinuxOptions{
