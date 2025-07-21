@@ -626,7 +626,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         // Read argv
         char *const *argv_ptr = (char *const *)(ctx->args[1]); // argv is usually args[1]
         u32 count = 0;
-        /*if (argv_ptr) {
+        if (argv_ptr) {
             #pragma unroll
             for (int i = 0; i < MAX_ARGS; i++) {
                 const char *arg_str_ptr;
@@ -642,7 +642,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
                                                                 arg_str_ptr);
                 count++;
             }
-        }*/
+        }
         exec_event->args_len = count; // Store actual length of args data
 
         // Read envp
@@ -659,9 +659,9 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
                 }
 
                 // Read the env string into our buffer
-                bpf_read_user_string_safe(exec_event->env[i],
+                /*bpf_read_user_string_safe(exec_event->env[i],
                                           sizeof(exec_event->env[i]),
-                                           env_str_ptr);
+                                           env_str_ptr); */
                 count++;
             }
         }
