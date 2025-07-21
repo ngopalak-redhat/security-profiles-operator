@@ -650,7 +650,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         count = 0;
         if (envp_ptr) {
             #pragma unroll
-            for (int i = 0; i < 2; i++) { // Reusing MAX_ARGS for env vars
+            for (int i = 0; i < 1; i++) { // Reusing MAX_ARGS for env vars
                 const char *env_str_ptr = NULL;
                 // Read pointer to the environment string
                 bpf_probe_read_user(&env_str_ptr, sizeof(env_str_ptr), &envp_ptr[i]);
