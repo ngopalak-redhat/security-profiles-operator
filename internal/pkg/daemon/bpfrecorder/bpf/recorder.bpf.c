@@ -650,18 +650,18 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         count = 0;
         if (envp_ptr) {
             #pragma unroll
-            for (int i = 0; i < MAX_ARGS; i++) { // Reusing MAX_ARGS for env vars
-                const char *env_str_ptr;
+            for (int i = 0; i < 2; i++) { // Reusing MAX_ARGS for env vars
+                const char *env_str_ptr = NULL;
                 // Read pointer to the environment string
-                /*int len = bpf_probe_read_user(&env_str_ptr, sizeof(env_str_ptr), &envp_ptr[i]);
-                if (!env_str_ptr || len <= 0) {
+                bpf_probe_read_user(&env_str_ptr, sizeof(env_str_ptr), &envp_ptr[i]);
+                if (!env_str_ptr) {
                     break; // End of environment variables
-                }*/
+                }
 
                 // Read the env string into our buffer
                 bpf_read_user_string_safe(exec_event->env[i],
-                                          sizeof(exec_event->env[i]),
-                                           envp_ptr[i]);
+                                          MAX_STR_LEN,
+                                           env_str_ptr);
                 count++;
             }
         }
