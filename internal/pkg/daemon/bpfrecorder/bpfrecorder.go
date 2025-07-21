@@ -66,7 +66,6 @@ const (
 	pathMax                 int           = 4096
 	maxArgs                 int           = 20
 	maxStrLen               int           = 128
-	maxArgcEnvBuffer        int           = maxArgs * maxStrLen
 	eventTypeNewPid         int           = 0
 	eventTypeExit           int           = 1
 	eventTypeAppArmorFile   int           = 2

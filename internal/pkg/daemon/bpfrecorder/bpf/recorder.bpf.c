@@ -399,33 +399,6 @@ static __always_inline int register_file_event(struct file * file, u64 flags)
                              false);
 }
 
-/**
- * read_user_string_to_buffer Helper to read and append user string to a buffer.
- * Returns actual bytes written (including null terminator) or 0 on error
- */
-/*static __always_inline u32 read_user_string_to_buffer(char *buffer, u32 buffer_max_len,
-                                                       char *user_ptr, u32 current_offset) {
-    if (!user_ptr || (current_offset + MAX_STR_LEN) >= buffer_max_len) {
-        return 0;
-    }
-
-    u32 len = 0;
-    // Read up to remaining buffer space or MAX_STR_LEN
-    bpf_printk("ngopalak 1 %s", buffer);
-    bpf_printk("ngopalak 2 %s", user_ptr);
-    bpf_printk("ngopalak 3 %d %d", buffer_max_len, current_offset);
-    len = bpf_probe_read_user_str(buffer,
-                                  MAX_STR_LEN,
-                                  user_ptr);
-    if (len < 0 || len > MAX_STR_LEN) {
-        return 0;
-    }
-    if (len > 0) {
-        return len;
-    }
-    return 0;
-}*/
-
 static __always_inline u32 bpf_read_user_string_safe(char *dest, u32 max_len, const char *user_ptr) {
     if (!user_ptr || !dest) {
         return 0;
