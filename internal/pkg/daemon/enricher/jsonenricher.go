@@ -33,6 +33,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/security-profiles-operator/internal/pkg/daemon/bpfrecorder"
 
 	apienricher "sigs.k8s.io/security-profiles-operator/api/grpc/enricher"
 	"sigs.k8s.io/security-profiles-operator/internal/pkg/config"
@@ -248,6 +249,11 @@ func (e *JsonEnricher) Run(ctx context.Context, runErr chan<- error) {
 	e.logger.Info("Reading from file " + filePath)
 
 	timePrev := time.Now()
+
+	_, errBpf := bpfrecorder.NewBpfProcessCache(e.logger)
+	if errBpf != nil {
+		e.logger.Info("Unable to load BPF module. Using auditd", "err", errBpf.Error())
+	}
 
 	for l := range e.Lines(tailFile) {
 		if l.Err != nil {

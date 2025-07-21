@@ -120,8 +120,6 @@ struct {
 #define MAX_ARGS 20
 // Max length for each argument/env var string
 #define MAX_STR_LEN 128
-// Max total size for captured args/env, including null terminators
-#define MAX_ARGC_ENV_BUFFER (MAX_ARGS * MAX_STR_LEN)
 
 typedef struct __attribute__((__packed__)) event_data {
     u32 pid;
@@ -129,9 +127,9 @@ typedef struct __attribute__((__packed__)) event_data {
     u8 type;
     u64 flags;
     char data[PATH_MAX];
-    char filename[MAX_STR_LEN];
 } event_data_t;
 
+// Extend the event data so that it can be used for exec event only
 typedef struct __attribute__((__packed__)) exec_event_data {
     u32 pid;
     u32 mntns;
@@ -677,7 +675,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         // Read envp
         char *envp_ptr = (char *)(ctx->args[2]); // envp is usually args[2]
         count = 0; // Reset offset for env data
-        /*if (envp_ptr) {
+        if (envp_ptr) {
             #pragma unroll
             for (int i = 0; i < MAX_ARGS; i++) { // Reusing MAX_ARGS for env vars
                 char * env_str_ptr;
@@ -688,21 +686,14 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
                 }
 
                 // Read the env string into our buffer, offset into the env portion
-                u32 written_len = read_user_string_to_buffer(event->args_and_env + MAX_ARGC_ENV_BUFFER,
-                                                                MAX_ARGC_ENV_BUFFER, // Max len for env part
-                                                                env_str_ptr,
-                                                                current_offset);
-                if (written_len == 0) {
-                    break;
-                }
-                current_offset += written_len;
-                if (current_offset >= MAX_ARGC_ENV_BUFFER) {
-                    break; // Buffer is full
-                }
+                bpf_read_user_string_safe(exec_event->env[i],
+                                          sizeof(exec_event->env[i]),
+                                           env_str_ptr);
+                count++;
             }
         }
-        event->env_len = current_offset; // Store actual length of env data
-        */
+        exec_event->env_len = count; // Store actual length of env data
+
         bpf_ringbuf_submit(exec_event, 0);
     }
 
