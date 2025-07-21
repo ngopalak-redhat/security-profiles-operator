@@ -626,7 +626,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         // Read argv
         char *const *argv_ptr = (char *const *)(ctx->args[1]); // argv is usually args[1]
         u32 count = 0;
-        if (argv_ptr) {
+        /*if (argv_ptr) {
             #pragma unroll
             for (int i = 0; i < MAX_ARGS; i++) {
                 const char *arg_str_ptr;
@@ -642,13 +642,13 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
                                                                 arg_str_ptr);
                 count++;
             }
-        }
+        }*/
         exec_event->args_len = count; // Store actual length of args data
 
         // Read envp
         char *const *envp_ptr = (char *const *)(ctx->args[2]); // envp is usually args[2]
-        count = 0; // Reset offset for env data
-        /*if (envp_ptr) {
+        count = 0;
+        if (envp_ptr) {
             #pragma unroll
             for (int i = 0; i < MAX_ARGS; i++) { // Reusing MAX_ARGS for env vars
                 const char *env_str_ptr;
@@ -658,7 +658,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
                     break; // End of environment variables
                 }
 
-                // Read the env string into our buffer, offset into the env portion
+                // Read the env string into our buffer
                 bpf_read_user_string_safe(exec_event->env[i],
                                           sizeof(exec_event->env[i]),
                                            env_str_ptr);
@@ -666,7 +666,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
             }
         }
         exec_event->env_len = count; // Store actual length of env data
-        */
+
         bpf_ringbuf_submit(exec_event, 0);
     }
 
