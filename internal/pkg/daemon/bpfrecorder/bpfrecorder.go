@@ -843,7 +843,7 @@ func (b *BpfRecorder) handleEvent(eventBytes []byte) {
 			return
 		}
 
-		b.logger.Info("eventTypeExecevEnter received", "execEvent", &errExecEvent)
+		b.logger.Info("eventTypeExecevEnter received", "execEvent", &execEvent)
 	}
 }
 
