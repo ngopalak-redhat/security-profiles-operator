@@ -22,7 +22,7 @@
 #define EVENT_TYPE_APPARMOR_SOCKET 3
 #define EVENT_TYPE_APPARMOR_CAP 4
 #define EVENT_TYPE_CLEAR_MNTNS 5
-#define EVENT_TYPE_EXECEV_ENTER 6
+#define EVENT_TYPE_EXECVE_ENTER 6
 
 #define FLAG_READ 0x1
 #define FLAG_WRITE 0x2
@@ -61,8 +61,8 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 #endif
 
 // toggle this for additional debug output
-// #define trace_hook(...)
-#define trace_hook(...) if(get_mntns()) { bpf_printk(__VA_ARGS__); }
+#define trace_hook(...)
+// #define trace_hook(...) if(get_mntns()) { bpf_printk(__VA_ARGS__); }
 
 // are we currently recording?
 // If yes, the only map element is set to true.
@@ -616,7 +616,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
             bpf_ringbuf_reserve(&events, sizeof(exec_event_data_t), 0);
     if (exec_event) {
     	exec_event->pid = bpf_get_current_pid_tgid() >> 32;
-    	exec_event->type = EVENT_TYPE_EXECEV_ENTER;
+    	exec_event->type = EVENT_TYPE_EXECVE_ENTER;
         // Get filename (first argument)
         char * filename_ptr = (char *)ctx->args[0];
         if (filename_ptr) {
@@ -648,10 +648,10 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         // Read envp
         char *const *envp_ptr = (char *const *)(ctx->args[2]); // envp is usually args[2]
         count = 0; // Reset offset for env data
-        if (envp_ptr) {
+        /*if (envp_ptr) {
             #pragma unroll
             for (int i = 0; i < MAX_ARGS; i++) { // Reusing MAX_ARGS for env vars
-                const char * env_str_ptr;
+                const char *env_str_ptr;
                 // Read pointer to the environment string
                 bpf_probe_read_user(&env_str_ptr, sizeof(env_str_ptr), &envp_ptr[i]);
                 if (!env_str_ptr) {
@@ -666,7 +666,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
             }
         }
         exec_event->env_len = count; // Store actual length of env data
-
+        */
         bpf_ringbuf_submit(exec_event, 0);
     }
 
