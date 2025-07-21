@@ -636,6 +636,16 @@ semodule -i /opt/spo-profiles/selinuxrecording.cil
 								MountPath: filepath.Dir(config.SyslogLogPath),
 								ReadOnly:  true,
 							},
+							{
+								Name:      "sys-kernel-debug-volume",
+								MountPath: sysKernelDebugPath,
+								ReadOnly:  true,
+							},
+							{
+								Name:      "sys-kernel-tracing-volume",
+								MountPath: sysKernelTracingPath,
+								ReadOnly:  true,
+							},
 						},
 						SecurityContext: &corev1.SecurityContext{
 							ReadOnlyRootFilesystem: &truly,
