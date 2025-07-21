@@ -130,11 +130,21 @@ typedef struct __attribute__((__packed__)) event_data {
     u64 flags;
     char data[PATH_MAX];
     char filename[MAX_STR_LEN];
+} event_data_t;
+
+typedef struct __attribute__((__packed__)) exec_event_data {
+    u32 pid;
+    u32 mntns;
+    u8 type;
+    u64 flags;
+    char data[PATH_MAX];
+    char filename[MAX_STR_LEN];
     char args[MAX_ARGS][MAX_STR_LEN];
     char env[MAX_ARGS][MAX_STR_LEN];
     u32 args_len;
     u32 env_len;
-} event_data_t;
+} exec_event_data_t;
+
 
 const volatile char filter_name[MAX_COMM_LEN] = {};
 
@@ -631,15 +641,15 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         return 0;
     trace_hook("sys_enter_execve");
 
-    event_data_t * event =
-            bpf_ringbuf_reserve(&events, sizeof(event_data_t), 0);
-    if (event) {
-    	event->pid = bpf_get_current_pid_tgid() >> 32;
-    	event->type = EVENT_TYPE_EXECEV_ENTER;
+    exec_event_data_t * exec_event =
+            bpf_ringbuf_reserve(&events, sizeof(exec_event_data_t), 0);
+    if (exec_event) {
+    	exec_event->pid = bpf_get_current_pid_tgid() >> 32;
+    	exec_event->type = EVENT_TYPE_EXECEV_ENTER;
         // Get filename (first argument)
         char * filename_ptr = (char *)ctx->args[0];
         if (filename_ptr) {
-            bpf_probe_read_user_str(&event->filename, sizeof(event->filename), filename_ptr);
+            bpf_probe_read_user_str(&exec_event->filename, sizeof(exec_event->filename), filename_ptr);
         }
 
         // Read argv
@@ -656,13 +666,13 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
                 }
 
                 // Read the argument string into our buffer
-                bpf_read_user_string_safe(event->args[i],
-                                                                sizeof(event->args[i]),
+                bpf_read_user_string_safe(exec_event->args[i],
+                                                                sizeof(exec_event->args[i]),
                                                                 arg_str_ptr);
                 count++;
             }
         }
-        event->args_len = count; // Store actual length of args data
+        exec_event->args_len = count; // Store actual length of args data
 
         // Read envp
         char *envp_ptr = (char *)(ctx->args[2]); // envp is usually args[2]
@@ -693,7 +703,7 @@ int sys_enter_execve(struct trace_event_raw_sys_enter * ctx)
         }
         event->env_len = current_offset; // Store actual length of env data
         */
-        bpf_ringbuf_submit(event, 0);
+        bpf_ringbuf_submit(exec_event, 0);
     }
 
     // Handle runc init.

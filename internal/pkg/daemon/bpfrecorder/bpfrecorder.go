@@ -105,14 +105,18 @@ type BpfRecorder struct {
 // We use a single shared event ringbuf for all userspace communication.
 // This ensures that all previous events have already been processed.
 type bpfEvent struct {
-	Pid      uint32
-	Mntns    uint32
-	Type     uint8
-	Flags    uint64
-	Data     [pathMax]uint8
+	Pid   uint32
+	Mntns uint32
+	Type  uint8
+	Flags uint64
+	Data  [pathMax]uint8
+}
+
+type bpfExecEvent struct {
+	bpfEvent
 	Filename [maxStrLen]uint8
-	Args     [maxArgcEnvBuffer][maxStrLen]uint8
-	Env      [maxArgcEnvBuffer][maxStrLen]uint8
+	Args     [maxArgs][maxStrLen]uint8
+	Env      [maxArgs][maxStrLen]uint8
 	ArgsLen  uint32
 	EnvLen   uint32
 }
@@ -828,7 +832,15 @@ func (b *BpfRecorder) handleEvent(eventBytes []byte) {
 			b.AppArmor.clearMntns(&event)
 		}
 	case uint8(eventTypeExecevEnter):
-		b.logger.Info("eventTypeExecevEnter received", "event", &event)
+		var execEvent bpfExecEvent
+		errExecEvent := binary.Read(bytes.NewReader(eventBytes), binary.LittleEndian, &execEvent)
+		if errExecEvent != nil {
+			b.logger.Error(errExecEvent, "Couldn't read event structure")
+
+			return
+		}
+
+		b.logger.Info("eventTypeExecevEnter received", "execEvent", &errExecEvent)
 	}
 }
 
