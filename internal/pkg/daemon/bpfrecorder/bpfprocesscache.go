@@ -58,10 +58,12 @@ func NewBpfProcessCache(logger logr.Logger) (*BpfProcessCache, error) {
 			ttlcache.WithCapacity[int, *BpfProcessInfo](maxCacheItems),
 		),
 	}
+
 	if err := Load(logger, bpfProcCache); err != nil {
 		logger.Error(err, "failed to load process cache")
 		return nil, ErrBpfLoad
 	}
+
 	return bpfProcCache, nil
 }
 
@@ -148,6 +150,7 @@ func (b *BpfProcessCache) GetCmdLine(pid int) (cmdLine string, err error) {
 	if item != nil {
 		return item.Value().CmdLine, nil
 	}
+
 	return "", errors.New("no process info for Pid")
 }
 
@@ -156,6 +159,7 @@ func (b *BpfProcessCache) GetEnv(pid int) (env map[string]string, err error) {
 	if item != nil {
 		return item.Value().Env, nil
 	}
+
 	return nil, errors.New("no process info for Pid")
 }
 
