@@ -185,7 +185,7 @@ func (b *BpfProcessCache) handleEvent(eventBytes []byte) {
 
 	var cmdLine string
 	for i := 0; i < len(execEvent.Args); i++ {
-		cmdLine += string(execEvent.Args[i][:])
+		cmdLine += strings.ReplaceAll(string(execEvent.Args[i][:]), "\u0000", "")
 		if i < len(execEvent.Args)-1 {
 			cmdLine += " "
 		}
@@ -196,10 +196,14 @@ func (b *BpfProcessCache) handleEvent(eventBytes []byte) {
 	for i := 0; i < len(execEvent.Env); i++ {
 		envVar := string(execEvent.Env[i][:])
 
-		parts := strings.SplitN(envVar, "=", 2)
+		parts := strings.SplitN(envVar, ":", 2)
 		if len(parts) == 2 {
-			key := parts[0]
-			value := parts[1]
+			key := strings.ReplaceAll(parts[0], "\u0000", "")
+			key = strings.Trim(key, "\"")
+
+			value := strings.ReplaceAll(parts[1], "\u0000", "")
+			value = strings.Trim(value, "\"")
+
 			envMap[key] = value
 		}
 	}
