@@ -88,10 +88,16 @@ func Load(logger logr.Logger, b *BpfProcessCache) (err error) {
 
 	procCacheHooks := []string{
 		"sys_enter_execve",
+		"sys_enter_getgid",
 	}
 
 	if err := b.recorder.loadPrograms(procCacheHooks); err != nil {
 		return fmt.Errorf("loading base hooks: %w", err)
+	}
+
+	b.recorder.isRecordingBpfMap, err = b.recorder.GetMap(b.recorder.module, "is_recording")
+	if err != nil {
+		return fmt.Errorf("getting `is_recording` map: %w", err)
 	}
 
 	const timeout = 300
@@ -112,6 +118,12 @@ func Load(logger logr.Logger, b *BpfProcessCache) (err error) {
 	go b.processEvents(events) //TODO
 
 	b.logger.Info("BPF module successfully loaded.")
+
+	if err := b.recorder.StartRecording(); err != nil {
+		return fmt.Errorf("StartRecording self-test: %w", err)
+	}
+
+	b.logger.Info("Started Recorder")
 
 	return nil
 }
