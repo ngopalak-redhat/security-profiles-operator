@@ -181,7 +181,7 @@ func (b *BpfProcessCache) handleEvent(eventBytes []byte) {
 		return
 	}
 
-	b.logger.Info("eventTypeExecevEnter received", "execEvent", &execEvent)
+	b.logger.V(1).Info("eventTypeExecevEnter received", "execEvent", &execEvent)
 
 	var cmdLine string
 	for i := 0; i < len(execEvent.Args); i++ {
@@ -196,7 +196,7 @@ func (b *BpfProcessCache) handleEvent(eventBytes []byte) {
 	for i := 0; i < len(execEvent.Env); i++ {
 		envVar := string(execEvent.Env[i][:])
 
-		parts := strings.SplitN(envVar, ":", 2)
+		parts := strings.SplitN(envVar, "=", 2)
 		if len(parts) == 2 {
 			key := strings.ReplaceAll(parts[0], "\u0000", "")
 			key = strings.Trim(key, "\"")
@@ -210,10 +210,10 @@ func (b *BpfProcessCache) handleEvent(eventBytes []byte) {
 
 	pInfo := &BpfProcessInfo{
 		Pid:     int(execEvent.Pid),
-		CmdLine: string(execEvent.Filename[:]) + cmdLine,
+		CmdLine: cmdLine,
 		Env:     envMap,
 	}
 
 	b.cache.Set(int(execEvent.Pid), pInfo, ttlcache.DefaultTTL)
-	b.logger.Info("eventTypeExecevEnter processed", "pInfo", &pInfo)
+	b.logger.V(1).Info("eventTypeExecevEnter processed", "pInfo", &pInfo)
 }
