@@ -602,21 +602,35 @@ int sys_enter_prctl(struct trace_event_raw_sys_enter * ctx)
     return 0;
 }
 
-struct exec_info {
-    __u16 common_type;            // Offset=0, size=2
-    __u8  common_flags;           // Offset=2, size=1
-    __u8  common_preempt_count;   // Offset=3, size=1
-    __s32 common_pid;             // Offset=4, size=4
+/**
+From the file: /sys/kernel/debug/tracing/events/syscalls/sys_enter_execve/sys_enter_execve
+format:
+	field:unsigned short common_type;	offset:0;	size:2;	signed:0;
+	field:unsigned char common_flags;	offset:2;	size:1;	signed:0;
+	field:unsigned char common_preempt_count;	offset:3;	size:1;	signed:0;
+	field:int common_pid;	offset:4;	size:4;	signed:1;
+	field:unsigned char common_preempt_lazy_count;	offset:8;	size:1;	signed:0;
 
-    __s32 syscall_nr;             // Offset=8, size=4
-    __u32 pad;                    // Offset=12, size=4 (padding)
-    const __u8 *filename;         // Offset=16, size=8 (pointer)
-    const __u8 *const *argv;      // Offset=24, size=8 (pointer)
-    const __u8 *const *envp;      // Offset=32, size=8 (pointer)
+	field:int __syscall_nr;	offset:12;	size:4;	signed:1;
+	field:const char * filename;	offset:16;	size:8;	signed:0;
+	field:const char *const * argv;	offset:24;	size:8;	signed:0;
+	field:const char *const * envp;	offset:32;	size:8;	signed:0;
+*/
+struct exec_info {
+    __u16 common_type;           // Offset=0, size=2
+    __u8 common_flags;           // Offset=2, size=1
+    __u8 common_preempt_count;   // Offset=3, size=1
+    __s32 common_pid;            // Offset=4, size=4
+    __u8 common_preempt_lazy_count; // Offset=8, size=4
+
+    __s32 syscall_nr;            // Offset=12, size=4
+    const __u8 *filename;        // Offset=16, size=8 (pointer)
+    const __u8 *const *argv;     // Offset=24, size=8 (pointer)
+    const __u8 *const *envp;     // Offset=32, size=8 (pointer)
 };
 
 SEC("tracepoint/syscalls/sys_enter_execve")
-int sys_enter_execve(struct exec_info * ctx)
+int sys_enter_execve(struct exec_info *ctx)
 {
     if (!_is_recording_cached)
         return 0;
@@ -625,67 +639,60 @@ int sys_enter_execve(struct exec_info * ctx)
         return 0;
     trace_hook("sys_enter_execve");
 
-    exec_event_data_t * exec_event =
-            bpf_ringbuf_reserve(&events, sizeof(exec_event_data_t), 0);
+    exec_event_data_t *exec_event =
+        bpf_ringbuf_reserve(&events, sizeof(exec_event_data_t), 0);
     if (exec_event) {
         const __u8 *ptr;
         int ret;
-    	exec_event->pid = bpf_get_current_pid_tgid() >> 32;
-    	exec_event->type = EVENT_TYPE_EXECVE_ENTER;
+        u32 count = 0;
+
+        exec_event->pid = bpf_get_current_pid_tgid() >> 32;
+        exec_event->type = EVENT_TYPE_EXECVE_ENTER;
+
         // Get filename (first argument)
-        //char * filename_ptr = (char *)ctx->args[0];
-        //if (filename_ptr) {
-            bpf_probe_read_user_str(&exec_event->filename, sizeof(exec_event->filename), (void *)ctx->filename);
-        //}
+        bpf_probe_read_user_str(&exec_event->filename, sizeof(exec_event->filename), (void *)ctx->filename);
 
         // Read argv
-        //char *const *argv_ptr = (char *const *)(ctx->args[1]); // argv is usually args[1]
-        u32 count = 0;
-        //if (argv_ptr) {
-            #pragma unroll
-            for (int i = 0; i < MAX_ARGS; i++) {
-                //const char *arg_str_ptr;
-                // Read pointer to the argument string
-                ret = bpf_probe_read_user(&ptr, sizeof(ptr), &ctx->argv[i]);
-                if (ret < 0 || !ptr) {
-                    break; // End of arguments
-                }
-
-                // Read the argument string into our buffer
-                ret = bpf_probe_read_user_str(exec_event->args[i],
-                                                                sizeof(exec_event->args[i]),
-                                                                ptr);
-                                                if (ret < 0) {
-                                                            break;
-                                                        }
-                count++;
+#pragma unroll
+        for (int i = 0; i < MAX_ARGS; i++) {
+            // Read pointer to the argument string
+            ret = bpf_probe_read_user(&ptr, sizeof(ptr), &ctx->argv[i]);
+            if (ret < 0 || !ptr) {
+                break; // End of arguments
             }
-        //}
+
+            // Read the argument string into our buffer
+            ret = bpf_probe_read_user_str(exec_event->args[i],
+                                           sizeof(exec_event->args[i]),
+                                           ptr);
+            if (ret < 0) {
+                break;
+            }
+            count++;
+        }
+
         exec_event->args_len = count; // Store actual length of args data
 
-        // Read envp
-        //char *const *envp_ptr = (char *const *)(ctx->envp[2]); // envp is usually args[2]
-        //count = 0;
-        //if (envp_ptr) {
-            #pragma unroll
-            for (int i = 0; i < 1; i++) { // Reusing MAX_ARGS for env vars
-                //const char *env_str_ptr = NULL;
-                // Read pointer to the environment string
-                ret = bpf_probe_read_user(&ptr, sizeof(ptr), &ctx->envp[i]);
-                if (ret < 0 || !ptr) {
-                    break; // End of environment variables
-                }
+        count = 0;
 
-                // Read the env string into our buffer
-                ret = bpf_probe_read_user_str(exec_event->env[i],
-                                          MAX_STR_LEN,
-                                           ptr);
-                if (ret < 0) {
-                            break;
-                        }
-                count++;
+#pragma unroll
+        for (int i = 0; i < MAX_ARGS; i++) {
+            // Read pointer to the environment string
+            ret = bpf_probe_read_user(&ptr, sizeof(ptr), &ctx->envp[i]);
+            if (ret < 0 || !ptr) {
+                break;
             }
-        //}
+
+            // Read the env string into our buffer
+            ret = bpf_probe_read_user_str(exec_event->env[i],
+                                           MAX_STR_LEN,
+                                           ptr);
+            if (ret < 0) {
+                break;
+            }
+            count++;
+        }
+
         exec_event->env_len = count; // Store actual length of env data
 
         bpf_ringbuf_submit(exec_event, 0);
