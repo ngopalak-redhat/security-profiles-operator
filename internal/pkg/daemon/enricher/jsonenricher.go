@@ -53,6 +53,7 @@ type JsonEnricher struct {
 	processCache     *ttlcache.Cache[int, *types.ProcessInfo]
 	logWriter        io.Writer
 	enricherFilters  []types.EnricherFilterOptions
+	bpfProcessCache  *bpfrecorder.BpfProcessCache
 }
 
 type JsonEnricherOptions struct {
@@ -152,6 +153,7 @@ func NewJsonEnricherArgs(logger logr.Logger, opts *JsonEnricherOptions) (*JsonEn
 			ttlcache.WithCapacity[int, *types.ProcessInfo](maxCacheItems),
 		),
 		enricherFilters: enricherFilters,
+		bpfProcessCache: nil,
 	}
 
 	w, err := getWriter(actualOpts)
@@ -250,9 +252,11 @@ func (e *JsonEnricher) Run(ctx context.Context, runErr chan<- error) {
 
 	timePrev := time.Now()
 
-	_, errBpf := bpfrecorder.NewBpfProcessCache(e.logger)
+	bpfProcCache, errBpf := bpfrecorder.NewBpfProcessCache(e.logger)
 	if errBpf != nil {
 		e.logger.Info("Unable to load BPF module. Using auditd", "err", errBpf.Error())
+	} else {
+		e.bpfProcessCache = bpfProcCache
 	}
 
 	for l := range e.Lines(tailFile) {
@@ -316,6 +320,27 @@ func (e *JsonEnricher) Run(ctx context.Context, runErr chan<- error) {
 
 			logBucket.ProcessInfo = e.fetchProcessInfo(auditLine.ProcessID,
 				auditLine.Executable, uid, gid)
+		}
+
+		if e.bpfProcessCache != nil && logBucket.ProcessInfo != nil && logBucket.ProcessInfo.CmdLine == "" {
+			cmdLine, errCmdLine := e.bpfProcessCache.GetCmdLine(auditLine.ProcessID)
+			if errCmdLine == nil {
+				logBucket.ProcessInfo.CmdLine = cmdLine
+			} else {
+				e.logger.Info("cmd line not found in eBPF also")
+			}
+		}
+
+		if e.bpfProcessCache != nil && logBucket.ProcessInfo != nil && logBucket.ProcessInfo.ExecRequestId == nil {
+			procEnv, errCmdLine := e.bpfProcessCache.GetEnv(auditLine.ProcessID)
+			if errCmdLine == nil {
+				reqId, ok := procEnv[requestIdEnv]
+				if ok {
+					logBucket.ProcessInfo.ExecRequestId = &reqId
+				} else {
+					e.logger.Info("Exec request id info not found in eBPF also")
+				}
+			}
 		}
 
 		if logBucket.ContainerInfo == nil {

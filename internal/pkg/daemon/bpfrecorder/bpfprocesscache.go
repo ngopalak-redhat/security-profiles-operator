@@ -25,9 +25,11 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 
 	bpf "github.com/aquasecurity/libbpfgo"
 	"github.com/go-logr/logr"
+	"github.com/jellydator/ttlcache/v3"
 )
 
 var ErrBpfLoad = errors.New("unable to load BPF")
@@ -35,15 +37,26 @@ var ErrBpfLoad = errors.New("unable to load BPF")
 const CmdLineNotFound = "Unable to find cmdLine"
 const EnvNotFound = "Unable to find env"
 
+type BpfProcessInfo struct {
+	Pid     int
+	CmdLine string
+	Env     map[string]string
+}
+
 type BpfProcessCache struct {
 	recorder *BpfRecorder
 	logger   logr.Logger
+	cache    *ttlcache.Cache[int, *BpfProcessInfo]
 }
 
 func NewBpfProcessCache(logger logr.Logger) (*BpfProcessCache, error) {
 	bpfProcCache := &BpfProcessCache{
 		recorder: New("", logger, false, false),
 		logger:   logger,
+		cache: ttlcache.New(
+			ttlcache.WithTTL[int, *BpfProcessInfo](processCacheTimeout),
+			ttlcache.WithCapacity[int, *BpfProcessInfo](maxCacheItems),
+		),
 	}
 	if err := Load(logger, bpfProcCache); err != nil {
 		logger.Error(err, "failed to load process cache")
@@ -125,17 +138,25 @@ func Load(logger logr.Logger, b *BpfProcessCache) (err error) {
 
 	b.logger.Info("Started Recorder")
 
+	go b.cache.Start()
+
 	return nil
 }
 
 func (b *BpfProcessCache) GetCmdLine(pid int) (cmdLine string, err error) {
-	// TODO
-	return "", nil
+	item := b.cache.Get(pid)
+	if item != nil {
+		return item.Value().CmdLine, nil
+	}
+	return "", errors.New("no process info for Pid")
 }
 
 func (b *BpfProcessCache) GetEnv(pid int) (env map[string]string, err error) {
-	// TODO
-	return nil, nil
+	item := b.cache.Get(pid)
+	if item != nil {
+		return item.Value().Env, nil
+	}
+	return nil, errors.New("no process info for Pid")
 }
 
 func (b *BpfProcessCache) processEvents(events chan []byte) {
@@ -157,4 +178,34 @@ func (b *BpfProcessCache) handleEvent(eventBytes []byte) {
 	}
 
 	b.logger.Info("eventTypeExecevEnter received", "execEvent", &execEvent)
+
+	var cmdLine string
+	for i := 0; i < len(execEvent.Args); i++ {
+		cmdLine += string(execEvent.Args[i][:])
+		if i < len(execEvent.Args)-1 {
+			cmdLine += " "
+		}
+	}
+
+	envMap := make(map[string]string)
+
+	for i := 0; i < len(execEvent.Env); i++ {
+		envVar := string(execEvent.Env[i][:])
+
+		parts := strings.SplitN(envVar, "=", 2)
+		if len(parts) == 2 {
+			key := parts[0]
+			value := parts[1]
+			envMap[key] = value
+		}
+	}
+
+	pInfo := &BpfProcessInfo{
+		Pid:     int(execEvent.Pid),
+		CmdLine: string(execEvent.Filename[:]) + cmdLine,
+		Env:     envMap,
+	}
+
+	b.cache.Set(int(execEvent.Pid), pInfo, ttlcache.DefaultTTL)
+	b.logger.Info("eventTypeExecevEnter processed", "pInfo", &pInfo)
 }

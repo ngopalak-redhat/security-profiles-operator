@@ -58,6 +58,7 @@ const (
 	maxMsgSize              int           = 16 * 1024 * 1024
 	maxCommLen              int           = 64
 	defaultCacheTimeout     time.Duration = time.Hour
+	processCacheTimeout                   = time.Minute
 	maxCacheItems           uint64        = 1000
 	defaultHostPid          uint32        = 1
 	defaultByteNum          int           = 4
