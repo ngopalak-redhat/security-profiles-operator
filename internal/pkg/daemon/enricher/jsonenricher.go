@@ -326,6 +326,7 @@ func (e *JsonEnricher) Run(ctx context.Context, runErr chan<- error) {
 			cmdLine, errCmdLine := e.bpfProcessCache.GetCmdLine(auditLine.ProcessID)
 			if errCmdLine == nil {
 				logBucket.ProcessInfo.CmdLine = cmdLine
+				e.logger.Info("cmd line  found in eBPF")
 			} else {
 				e.logger.Info("cmd line not found in eBPF also")
 			}
@@ -337,6 +338,7 @@ func (e *JsonEnricher) Run(ctx context.Context, runErr chan<- error) {
 				reqId, ok := procEnv[requestIdEnv]
 				if ok {
 					logBucket.ProcessInfo.ExecRequestId = &reqId
+					e.logger.Info("Exec request id info found in eBPF")
 				} else {
 					e.logger.Info("Exec request id info not found in eBPF also")
 				}
