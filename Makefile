@@ -453,6 +453,7 @@ verify-deployments: deployments ## Verify the generated deployments
 
 .PHONY: verify-go-lint
 verify-go-lint: $(BUILD_DIR)/golangci-lint ## Verify the golang code by linting
+	$(BUILD_DIR)/golangci-lint version
 	GL_DEBUG=gocritic $(BUILD_DIR)/golangci-lint run --build-tags $(LINT_BUILDTAGS)
 
 $(BUILD_DIR)/golangci-lint:
