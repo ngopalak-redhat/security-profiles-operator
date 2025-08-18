@@ -452,22 +452,12 @@ verify-deployments: deployments ## Verify the generated deployments
 	hack/tree-status
 
 .PHONY: verify-go-lint
-verify-go-lint: golangci-lint-update ## Verify the golang code by linting
+verify-go-lint: $(BUILD_DIR)/golangci-lint ## Verify the golang code by linting
 	$(BUILD_DIR)/golangci-lint version
 	GL_DEBUG=gocritic $(BUILD_DIR)/golangci-lint run --build-tags $(LINT_BUILDTAGS)
 
-.PHONY: golangci-lint-update
-golangci-lint-update:
-	if [ -f $(BUILD_DIR)/golangci-lint ]; then \                                                                                                   │ │
-		CURRENT_VERSION=$$($(BUILD_DIR)/golangci-lint version --format=short 2>/dev/null | cut -d' ' -f4 || echo "unknown"); \                        │ │
-		if [ "$$CURRENT_VERSION" = "$(GOLANGCI_LINT_VERSION)" ]; then \                                                                               │ │
-			echo "golangci-lint $(GOLANGCI_LINT_VERSION) already installed"; \                                                                          │ │
-			exit 0; \                                                                                                                                   │ │
-		else \                                                                                                                                        │ │
-			echo "Found golangci-lint $$CURRENT_VERSION, but need $(GOLANGCI_LINT_VERSION). Updating..."; \                                             │ │
-			rm -f $(BUILD_DIR)/golangci-lint; \                                                                                                         │ │
-		fi; \                                                                                                                                         │ │
-	fi
+.PHONY: $(BUILD_DIR)/golangci-lint
+$(BUILD_DIR)/golangci-lint:
 	$(BUILD_DIR)/golangci-lint version
 	export \
 		VERSION=$(GOLANGCI_LINT_VERSION) \
