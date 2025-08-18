@@ -9,8 +9,11 @@ sortOptions:
 
 resources:
 - ../cluster
-- webhook-options.yaml
 patches:
+- path: webhook-options.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: securityprofilesoperatordaemons.security-profiles-operator.x-k8s.io
 - path: service_discovery_rules.yaml
   target:
     kind: ClusterRole
