@@ -12,7 +12,7 @@ images:
   newTag: latest
 resources:
 - ../cluster
-
+- webhook-options.yaml
 patches:
 - patch: |-
     - op: add
@@ -20,3 +20,4 @@ patches:
       value: "true"
   target:
     kind: Namespace
+
