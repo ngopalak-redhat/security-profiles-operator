@@ -9,6 +9,7 @@ sortOptions:
 
 resources:
 - ../cluster
+- webhook-options.yaml
 patches:
 - path: service_discovery_rules.yaml
   target:
