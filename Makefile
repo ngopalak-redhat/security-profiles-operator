@@ -456,6 +456,7 @@ verify-go-lint: $(BUILD_DIR)/golangci-lint ## Verify the golang code by linting
 	GL_DEBUG=gocritic $(BUILD_DIR)/golangci-lint run --build-tags $(LINT_BUILDTAGS)
 
 $(BUILD_DIR)/golangci-lint:
+	$(BUILD_DIR)/golangci-lint version
 	export \
 		VERSION=$(GOLANGCI_LINT_VERSION) \
 		URL=https://raw.githubusercontent.com/golangci/golangci-lint \
