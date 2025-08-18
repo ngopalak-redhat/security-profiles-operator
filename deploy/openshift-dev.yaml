@@ -2116,7 +2116,7 @@ spec:
                 type: integer
               webhookOptions:
                 default:
-                - name: nodedebuggingpodmetada.spo.io
+                - name: nodedebuggingpod.spo.io
                   objectSelector:
                     matchLabels:
                       debug.openshift.io/managed-by: oc-debug
