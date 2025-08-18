@@ -3478,6 +3478,18 @@ spec:
         key: node.kubernetes.io/not-ready
         operator: Exists
 ---
+apiVersion: security-profiles-operator.x-k8s.io/v1alpha1
+kind: SecurityProfilesOperatorDaemon
+metadata:
+  name: spod
+  namespace: security-profiles-operator
+spec:
+  webhookOptions:
+  - name: nodedebuggingpodmetada.spo.io
+    objectSelector:
+      matchLabels:
+        debug.openshift.io/managed-by: oc-debug
+---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
