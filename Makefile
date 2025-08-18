@@ -458,7 +458,7 @@ verify-go-lint: golangci-lint-update ## Verify the golang code by linting
 
 .PHONY: golangci-lint-update
 golangci-lint-update:
-	@if [ -f $(BUILD_DIR)/golangci-lint ]; then \                                                                                                   │ │
+	if [ -f $(BUILD_DIR)/golangci-lint ]; then \                                                                                                   │ │
 		CURRENT_VERSION=$$($(BUILD_DIR)/golangci-lint version --format=short 2>/dev/null | cut -d' ' -f4 || echo "unknown"); \                        │ │
 		if [ "$$CURRENT_VERSION" = "$(GOLANGCI_LINT_VERSION)" ]; then \                                                                               │ │
 			echo "golangci-lint $(GOLANGCI_LINT_VERSION) already installed"; \                                                                          │ │
