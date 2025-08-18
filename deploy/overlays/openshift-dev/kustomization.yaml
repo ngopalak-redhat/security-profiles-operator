@@ -21,6 +21,9 @@ patches:
         objectSelector:
           matchLabels:
             debug.openshift.io/managed-by: "oc-debug"
+  target:
+    kind: CustomResourceDefinition
+    name: securityprofilesoperatordaemons.security-profiles-operator.x-k8s.io
 #- path: webhook-options.yaml
 #  target:
 #    kind: CustomResourceDefinition
