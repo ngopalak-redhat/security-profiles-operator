@@ -2115,6 +2115,7 @@ spec:
                 description: Verbosity specifies the logging verbosity of the daemon.
                 type: integer
               webhookOptions:
+                default: {}
                 description: |-
                   WebhookOpts set custom namespace selectors and failure mode for
                   SPO's webhooks

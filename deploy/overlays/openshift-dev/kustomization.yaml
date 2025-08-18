@@ -13,10 +13,18 @@ images:
 resources:
 - ../cluster
 patches:
-- path: webhook-options.yaml
-  target:
-    kind: CustomResourceDefinition
-    name: securityprofilesoperatordaemons.security-profiles-operator.x-k8s.io
+- patch: |-
+    - op: replace
+      path: "/spec/versions/v1alpha1/openAPIV3Schema/spec/webhookOptions/default"
+      value:
+        name: nodedebuggingpodmetada.spo.io
+        objectSelector:
+          matchLabels:
+            debug.openshift.io/managed-by: "oc-debug"
+#- path: webhook-options.yaml
+#  target:
+#    kind: CustomResourceDefinition
+#    name: securityprofilesoperatordaemons.security-profiles-operator.x-k8s.io
 - patch: |-
     - op: add
       path:  "/metadata/labels/openshift.io~1cluster-monitoring"
