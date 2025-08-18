@@ -101,7 +101,7 @@ install_operator() {
   k_wait pod -l name=spod
 
   wait_for spod spod
-  INITIAL_SPOD_DS_VERSION=$(k get daemonset spod -o=jsonpath='{.status.currentNumberScheduled}' 2>/dev/null)
+  INITIAL_SPOD_DS_VERSION=$(k get controllerrevision -l name=spod --sort-by=.revision -o=jsonpath='{.items[-1].revision}' 2>/dev/null)
 
   if [[ -z "$INITIAL_SPOD_DS_VERSION" ]]; then
       echo "Error: DaemonSet 'spod' not found or could not get its status."
@@ -111,7 +111,7 @@ install_operator() {
   # Wait for security profiles operator to modify the spod daemonset
   sleep 5
   k rollout status ds spod --timeout 360s
-  PATCHED_SPOD_DS_VERSION=$(k get daemonset spod -o=jsonpath='{.status.currentNumberScheduled}' 2>/dev/null)
+  PATCHED_SPOD_DS_VERSION=$(k get controllerrevision -l name=spod --sort-by=.revision -o=jsonpath='{.items[-1].revision}' 2>/dev/null)
 
   if [ "$PATCHED_SPOD_DS_VERSION" -gt "$INITIAL_SPOD_DS_VERSION" ]; then
       echo "Success! The DaemonSet version has been updated from $INITIAL_SPOD_DS_VERSION to $PATCHED_SPOD_DS_VERSION."
