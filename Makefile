@@ -457,6 +457,16 @@ verify-go-lint: $(BUILD_DIR)/golangci-lint ## Verify the golang code by linting
 	GL_DEBUG=gocritic $(BUILD_DIR)/golangci-lint run --build-tags $(LINT_BUILDTAGS)
 
 $(BUILD_DIR)/golangci-lint:
+	@if [ -f $(BUILD_DIR)/golangci-lint ]; then \                                                                                                   │ │
+		CURRENT_VERSION=$$($(BUILD_DIR)/golangci-lint version --format=short 2>/dev/null | cut -d' ' -f4 || echo "unknown"); \                        │ │
+		if [ "$$CURRENT_VERSION" = "$(GOLANGCI_LINT_VERSION)" ]; then \                                                                               │ │
+			echo "golangci-lint $(GOLANGCI_LINT_VERSION) already installed"; \                                                                          │ │
+			exit 0; \                                                                                                                                   │ │
+		else \                                                                                                                                        │ │
+			echo "Found golangci-lint $$CURRENT_VERSION, but need $(GOLANGCI_LINT_VERSION). Updating..."; \                                             │ │
+			rm -f $(BUILD_DIR)/golangci-lint; \                                                                                                         │ │
+		fi; \                                                                                                                                         │ │
+	fi
 	$(BUILD_DIR)/golangci-lint version
 	export \
 		VERSION=$(GOLANGCI_LINT_VERSION) \
