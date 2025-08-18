@@ -16,8 +16,8 @@ resources:
 patches:
 - path: webhook-options.yaml
   target:
-    kind: CustomResourceDefinition
-    name: securityprofilesoperatordaemons.security-profiles-operator.x-k8s.io
+    kind: SecurityProfilesOperatorDaemon
+    name: spod
 - patch: |-
     - op: add
       path:  "/metadata/labels/openshift.io~1cluster-monitoring"
